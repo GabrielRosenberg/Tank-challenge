@@ -18,22 +18,13 @@ def scan_surroundings(direction):
     normalized_surroundings = [up, down, left, right]
 
     if direction == "right":
-        normalized_surroundings[0] = left
-        normalized_surroundings[1] = right
-        normalized_surroundings[2] = down
-        normalized_surroundings[3] = up
+        normalized_surroundings = [left,right,down,up]
 
     elif direction == "down":
-        normalized_surroundings[0] = down
-        normalized_surroundings[1] = up
-        normalized_surroundings[2] = right
-        normalized_surroundings[3] = left
+        normalized_surroundings = [down,up,right,left] 
 
     elif direction == "left":
-        normalized_surroundings[0] = right
-        normalized_surroundings[1] = left
-        normalized_surroundings[2] = up
-        normalized_surroundings[3] = down
+        normalized_surroundings = [right,left,up,down]
 
     return normalized_surroundings
 
@@ -67,19 +58,34 @@ class Tank:
         else:
             target_marker = ' '
 
+        # 
+        for i in range(up):
+            playground[self.position[0] - i][self.position[1]] = ' ' 
+        for i in range(down): 
+            playground[self.position[0] + i][self.position[1]] = ' '
+        for i in range(right): 
+            playground[self.position[0]][self.position[1] + i] = ' ' 
+        for i in range(left):
+            playground[self.position[0]][self.position[1] - i] = ' '
+
+        # Update what's above us
         if playground[self.position[0] - up][self.position[1]] != '#':
             playground[self.position[0] - up][self.position[1]] = target_marker if self.direction == 'up' else '0'
 
+        # Update what's below us
         if playground[self.position[0] + down][self.position[1]] != '#':
             playground[self.position[0] + down][self.position[1]] = target_marker if self.direction == 'down' else '0'
 
+        # Update what's right of us
         if playground[self.position[0]][self.position[1] + right] != '#':
             playground[self.position[0]][self.position[1] + right] = target_marker if self.direction == 'right' else '0'
 
+        # Update what's left of us
         if playground[self.position[0]][self.position[1] - left] != '#':
             playground[self.position[0]][self.position[1] - left] = target_marker if self.direction == 'left' else '0'
 
         return api.identify_target()
+
 
     def turn(self, surroundings):
         """
@@ -115,7 +121,7 @@ class Tank:
                 new_dir = 'down'
 
         elif self.direction == 'down':
-            if surroundings[2] > 1 and surroundings[2] > surroundings[3]:
+            if surroundings[3] > 1 and surroundings[3] > surroundings[2]:
                 api.turn_left()
                 new_dir = 'right'
             else:
@@ -124,7 +130,37 @@ class Tank:
 
         self.direction = new_dir
 
-    def move(self, playground):
+
+    ########## TANK MOVEMENT METHODS
+    def new_turn_function(self, new_direction="up"):
+        """
+        Inputs a direction and turns the tank clock-wise until it faces the new direction
+        
+        :param new_direction: String value indicating the direction, e.g "left"
+        """
+        # For translating directions to numerical values
+        directions = ["up","right","down","left"]
+            
+        # Gets index for direction
+        old_dir_index = directions.index(self.direction)    # 2 if "down"
+        new_dir_index = directions.index(new_direction)     # 0 if "up"
+
+        # new_dir - old_dir -  ger ett värde för hur mycket vi ska svänga.
+        diff = new_dir_index-old_dir_index 
+
+        # Check diff
+        if diff == 3:
+            turns = -1
+        elif diff == -3:
+            turns = 1
+        else:
+            turns = diff
+
+        # Turns är antal steg att svänga 
+        # Positiva värden är steg åt höger, Negativa värden är steg åt vänster
+        return turns
+
+    def move_forward(self, playground):
         """
         Ändrar tankens position baserat på vilken riktning den har.
 
@@ -151,10 +187,13 @@ class Tank:
     def target_ahead(self):
         return api.identify_target()
 
+    ##########
+
+
+
 
 playground = [[' ' for i in range(41)] for j in range(41)]
 tank = Tank()
-
 
 class Solution:
     def __init__(self):
@@ -162,18 +201,40 @@ class Solution:
 
     def update(self):
         surroundings = scan_surroundings(tank.direction)
-        tank.update_playground(surroundings, playground)
 
         if tank.target_ahead():
             tank.fire_cannon()
+        
+        # turn? = eval_space(surroundings)
+        
+        elif playground[self.position[0] - surroundings[0]][self.position[1]] == ' ':
+            turn('up')
+        elif playground[self.position[0] + surroundings[1]][self.position[1]] == ' ':
+            turn('down')
+        elif playground[self.position[0]][self.position[1] + surroundings[3]] == ' ':
+            turn('right')
+        elif playground[self.position[0]][self.position[1] - left] == ' ':
+            turn('left')
         elif api.lidar_front() > 1:
             tank.move(playground)
         else:
             tank.turn(surroundings)
 
-        if self.counter > 50:
+        tank.update_playground(surroundings, playground)
+
+        """if tank.target_ahead():
+            tank.fire_cannon()
+        elif api.lidar_front() > 1:
+            tank.move_forward(playground)
+        else:
+            tank.turn(surroundings)"""
+
+        #Printar mappen var 10e frame
+        if (self.counter%10) == 0:
+            print("\n\n\n")
             for row in playground:
                 print(row)
+            
 
         self.counter += 1
 
